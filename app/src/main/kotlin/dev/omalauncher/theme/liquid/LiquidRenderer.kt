@@ -44,7 +44,8 @@ class LiquidRenderer(
 ) {
     private val bg = rgb(palette.background)
     private val light = rgb(palette.light)
-    private val wall = mix(bg, light, 0.08f)
+    // The tank's wall is the screen's edge: drawn as the background, so no frame shows.
+    private val wall = bg
     private val layerColors = palette.layers.map(::rgb)
 
     /** The palette things are snapped to: the background, wall and light, then each layer in four shades. */
@@ -65,6 +66,7 @@ class LiquidRenderer(
     // Per-pixel sums of the particles' colors, and their weight.
     private val acc = FloatArray(width * height * 4)
     private val mask = BooleanArray(width * height)
+    private val fills = BooleanArray(width * height)
     private val depth = IntArray(width)
     private var threshold = 0f
 
@@ -115,6 +117,30 @@ class LiquidRenderer(
             threshold = 0.5f * sum / max(n, 1)
         }
         for (i in mask.indices) mask[i] = acc[i * 4 + 3] > threshold
+        // Single-pixel gaps in the body, where the splat thins for a moment, would show as speckle: close them.
+        for (y in 1 until height - 1) {
+            for (x in 1 until width - 1) {
+                val i = y * width + x
+                if (mask[i]) continue
+                val k = i * 4
+                if (mask[i - 1] && mask[i + 1] || mask[i - width] && mask[i + width]) {
+                    // Take the color from the neighbour it borders, scaled so it reads at full weight.
+                    val src = if (mask[i - width]) i - width else if (mask[i - 1]) i - 1 else i + 1
+                    val w = acc[src * 4 + 3]
+                    acc[k] = acc[src * 4] / w * threshold * 1.01f
+                    acc[k + 1] = acc[src * 4 + 1] / w * threshold * 1.01f
+                    acc[k + 2] = acc[src * 4 + 2] / w * threshold * 1.01f
+                    acc[k + 3] = threshold * 1.01f
+                    fills[i] = true
+                }
+            }
+        }
+        for (i in fills.indices) {
+            if (fills[i]) {
+                mask[i] = true
+                fills[i] = false
+            }
+        }
 
         val wallPx = ceil(sim.width / sim.nx * sx).toInt()
         depth.fill(0)
