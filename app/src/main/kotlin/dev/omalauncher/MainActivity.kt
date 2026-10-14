@@ -5,9 +5,12 @@ import android.app.WallpaperManager
 import android.app.role.RoleManager
 import android.content.Intent
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import android.view.KeyEvent
 import android.view.MotionEvent
+import android.view.ViewConfiguration
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.lifecycle.lifecycleScope
@@ -50,8 +53,24 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    // Home sits over the wallpaper, so the liquid wallpaper only feels the finger if we pass it on.
+    // Home sits over the wallpaper, so the liquid wallpaper only feels a finger if we pass it on. Only a deliberate one:
+    // a press that rests for a moment, then drags. A finger that moves at once is a swipe between pages or to the drawer.
+    private enum class Stir { Idle, Waiting, Stirring, Ignored }
+
+    private var stir = Stir.Idle
+    private var downX = 0f
+    private var downY = 0f
+    private var lastX = 0f
+    private var lastY = 0f
     private var lastWallpaperTouch = 0L
+    private val holdHandler = Handler(Looper.getMainLooper())
+    private val startStirring =
+        Runnable {
+            if (stir == Stir.Waiting) {
+                stir = Stir.Stirring
+                sendToWallpaper(OmarchyWallpaperService.TOUCH_DOWN, lastX, lastY)
+            }
+        }
 
     override fun dispatchTouchEvent(ev: MotionEvent): Boolean {
         forwardToWallpaper(ev)
@@ -59,26 +78,67 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun forwardToWallpaper(ev: MotionEvent) {
-        if (!runtime.themes.liveWallpaperActive || !LauncherStyle.style[Style.LIQUID]) return
-        val phase =
-            when (ev.actionMasked) {
-                MotionEvent.ACTION_DOWN -> OmarchyWallpaperService.TOUCH_DOWN
-                MotionEvent.ACTION_MOVE -> OmarchyWallpaperService.TOUCH_MOVE
-                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> OmarchyWallpaperService.TOUCH_UP
-                else -> return
+        if (!runtime.themes.liveWallpaperActive || !LauncherStyle.style[Style.LIQUID] || !LauncherStyle.style[Style.LIQUID_TOUCH]) {
+            if (stir != Stir.Idle) endStirring()
+            return
+        }
+        when (ev.actionMasked) {
+            MotionEvent.ACTION_DOWN -> {
+                stir = Stir.Waiting
+                downX = ev.rawX
+                downY = ev.rawY
+                lastX = downX
+                lastY = downY
+                holdHandler.postDelayed(startStirring, STIR_HOLD_MS)
             }
-        // A move every frame is plenty; each one is a call into another process.
-        if (phase == OmarchyWallpaperService.TOUCH_MOVE && ev.eventTime - lastWallpaperTouch < 12) return
-        lastWallpaperTouch = ev.eventTime
-        val view = window.decorView
-        val token = view.windowToken ?: return
+            MotionEvent.ACTION_MOVE -> {
+                lastX = ev.rawX
+                lastY = ev.rawY
+                when (stir) {
+                    // Moving before the hold is up: a swipe, not a stir.
+                    Stir.Waiting ->
+                        if (Math.hypot((lastX - downX).toDouble(), (lastY - downY).toDouble()) > ViewConfiguration.get(this).scaledTouchSlop) {
+                            holdHandler.removeCallbacks(startStirring)
+                            stir = Stir.Ignored
+                        }
+                    // A move every frame is plenty; each one is a call into another process.
+                    Stir.Stirring ->
+                        if (ev.eventTime - lastWallpaperTouch >= 12) {
+                            lastWallpaperTouch = ev.eventTime
+                            sendToWallpaper(OmarchyWallpaperService.TOUCH_MOVE, lastX, lastY)
+                        }
+                    else -> Unit
+                }
+            }
+            MotionEvent.ACTION_POINTER_DOWN -> {
+                // A second finger is a pinch or a gesture, not stirring.
+                if (stir == Stir.Stirring) sendToWallpaper(OmarchyWallpaperService.TOUCH_UP, lastX, lastY)
+                holdHandler.removeCallbacks(startStirring)
+                stir = Stir.Ignored
+            }
+            MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> endStirring()
+        }
+    }
+
+    private fun endStirring() {
+        holdHandler.removeCallbacks(startStirring)
+        if (stir == Stir.Stirring) sendToWallpaper(OmarchyWallpaperService.TOUCH_UP, lastX, lastY)
+        stir = Stir.Idle
+    }
+
+    private fun sendToWallpaper(
+        phase: Int,
+        x: Float,
+        y: Float,
+    ) {
+        val token = window.decorView.windowToken ?: return
         val metrics = resources.displayMetrics
         runCatching {
             WallpaperManager.getInstance(this).sendWallpaperCommand(
                 token,
                 OmarchyWallpaperService.TOUCH_COMMAND,
-                (ev.rawX / metrics.widthPixels * 1000).toInt(),
-                (ev.rawY / metrics.heightPixels * 1000).toInt(),
+                (x / metrics.widthPixels * 1000).toInt(),
+                (y / metrics.heightPixels * 1000).toInt(),
                 phase,
                 null,
             )
@@ -190,5 +250,10 @@ class MainActivity : ComponentActivity() {
             else -> return false
         }
         return true
+    }
+
+    private companion object {
+        /** How long a finger must rest before it stirs the liquid. */
+        const val STIR_HOLD_MS = 200L
     }
 }

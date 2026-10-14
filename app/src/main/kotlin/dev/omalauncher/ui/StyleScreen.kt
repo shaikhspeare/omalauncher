@@ -288,6 +288,8 @@ private fun BackgroundSection(
         NumberOption("gravity", listOf("calm" to 6.0, "normal" to 10.0, "lively" to 15.0), Style.LIQUID_GRAVITY, style)
         NumberOption("idle sway", listOf("off" to 0.0, "low" to 0.3, "normal" to 0.6, "more" to 1.5), Style.LIQUID_WOBBLE, style)
         NumberOption("shake", listOf("off" to 0.0, "low" to 0.15, "normal" to 0.25, "high" to 0.6), Style.LIQUID_SHAKE, style)
+        StyleOption("touch", listOf("hold to stir", "off"), if (style.style[Style.LIQUID_TOUCH]) 0 else 1) { i -> style.update { it.with(Style.LIQUID_TOUCH, i == 0) } }
+        OptionHint("hold a finger still on home for a moment, then drag; swiping between pages leaves it alone", Modifier.padding(bottom = 4.dp))
     }
 }
 

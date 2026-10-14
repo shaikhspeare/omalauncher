@@ -30,8 +30,7 @@ data class LiquidSettings(
 
 /**
  * Runs a [LiquidSim] for the live wallpaper, on a thread of its own so it never takes time from
- * the launcher's UI. Tilt and shake come from the sensors, the finger from [touch], and a page
- * swipe from [swipe]. It runs only while [setVisible] says the wallpaper is on screen.
+ * the launcher's UI. Tilt and shake come from the sensors and the finger from [touch]. It runs only while [setVisible] says the wallpaper is on screen.
  */
 class LiquidDriver(
     context: Context,
@@ -66,7 +65,6 @@ class LiquidDriver(
     @Volatile private var shakeX = 0f
 
     @Volatile private var shakeY = 0f
-    private var kick = 0f
 
     @Volatile private var fingerOn = false
 
@@ -122,11 +120,6 @@ class LiquidDriver(
         fingerX = fx
         fingerY = fy
         fingerOn = on
-    }
-
-    /** The home pages scrolled by [delta] of their whole width: the liquid is pushed along. */
-    fun swipe(delta: Float) {
-        handler.post { kick = (kick + delta * 400f).coerceIn(-12f, 12f) }
     }
 
     /** Stops everything for good, as the wallpaper engine is destroyed. */
@@ -186,8 +179,7 @@ class LiquidDriver(
                 while (accumulator >= STEP_NS && steps < MAX_STEPS) {
                     val g = settings.gravity
                     val wobble = settings.wobble * (0.022f * sin(time * 0.45f) + 0.012f * sin(time * 1.1f + 1f))
-                    sim.step((tiltX + wobble) * g + shakeX * g * settings.shake + kick, tiltY * g + shakeY * g * settings.shake)
-                    kick *= 0.97f
+                    sim.step((tiltX + wobble) * g + shakeX * g * settings.shake, tiltY * g + shakeY * g * settings.shake)
                     time += LiquidSim.DT
                     accumulator -= STEP_NS
                     steps++
@@ -218,7 +210,8 @@ class LiquidDriver(
         prevFingerX = x
         prevFingerY = y
         wasFingerOn = on
-        sim.finger(on, x, y, fingerVx, fingerVy)
+        // However fast the finger really goes, it never moves through the pool faster than this: a flick would make waves, not swirls.
+        sim.finger(on, x, y, fingerVx.coerceIn(-MAX_FINGER_SPEED, MAX_FINGER_SPEED), fingerVy.coerceIn(-MAX_FINGER_SPEED, MAX_FINGER_SPEED))
     }
 
     private fun draw() {
@@ -280,6 +273,7 @@ class LiquidDriver(
         const val MAX_CATCH_UP_NS = 100_000_000L
         const val FRAME_DELAY_MS = 8L
         const val GRAVITY_EARTH = 9.81f
+        const val MAX_FINGER_SPEED = 1.2f
         const val TILT_SMOOTHING = 0.06f
     }
 }

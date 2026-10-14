@@ -80,7 +80,6 @@ class OmarchyWallpaperService : WallpaperService() {
             yPixelOffset: Int,
         ) {
             if (xOffset == this.xOffset) return
-            liquid?.swipe(xOffset - this.xOffset)
             this.xOffset = xOffset
             if (isVisible) draw()
         }

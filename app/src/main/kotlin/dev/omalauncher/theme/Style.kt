@@ -143,6 +143,7 @@ class Style(
         val LIQUID_GRAVITY = Setting.Number("liquid.gravity", 10.0, 4.0..30.0, "How hard the liquid is pulled: lower is calmer and slower, higher sloshes more.")
         val LIQUID_WOBBLE = Setting.Number("liquid.wobble", 0.6, 0.0..3.0, "How much the pool rocks by itself while you hold the phone still; 0 for none.")
         val LIQUID_SHAKE = Setting.Number("liquid.shake", 0.25, 0.0..2.0, "How much shaking or jolting the phone slops the liquid; 0 ignores it.")
+        val LIQUID_TOUCH = Setting.Flag("liquid.touch", true, "true: press and hold on home for a moment, then drag, to stir the liquid; quick swipes between home screens and the drawer leave it alone. false: touch never reaches it.")
         val LIQUID_FPS = Setting.Number("liquid.fps", 30.0, 10.0..60.0, "How often the liquid is drawn; the physics always runs at 60 steps a second. Lower saves battery.")
 
         val APP_TILES = Setting.Flag("home.app-tiles", true, "Apps on home in a tile like a widget; false draws bare icons on the wallpaper.")
@@ -204,7 +205,7 @@ object StyleFile {
 
     val ALL: List<Setting<*>> =
         with(Style) {
-            listOf(THEME, BACKGROUND, ANDROID_WALLPAPER, LIQUID, LIQUID_GRAVITY, LIQUID_WOBBLE, LIQUID_SHAKE, LIQUID_FPS, APP_TILES, RECENT_APPS, GAPS_IN, GAPS_OUT, TILE_BORDER_WIDTH, TILE_BORDER, TILE_BORDER_FOCUSED) +
+            listOf(THEME, BACKGROUND, ANDROID_WALLPAPER, LIQUID, LIQUID_GRAVITY, LIQUID_WOBBLE, LIQUID_SHAKE, LIQUID_TOUCH, LIQUID_FPS, APP_TILES, RECENT_APPS, GAPS_IN, GAPS_OUT, TILE_BORDER_WIDTH, TILE_BORDER, TILE_BORDER_FOCUSED) +
                 listOf(SCREEN_GAPS_OUT, SCREEN_BORDER_WIDTH, MONOCHROME_ICONS, CORNER_SCALE) +
                 STATUS_BAR.all + NAVIGATION_BAR.all + listOf(TERMINAL_FONT, TERMINAL_TEXT)
         }
