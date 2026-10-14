@@ -273,10 +273,16 @@ private fun BackgroundSection(
             BasicText("[ use as android wallpaper + system colors ]", style = Mono.copy(color = Palette.accent))
         }
     }
-    if (store.liveWallpaperActive) {
-        val liquid = style.style[Style.LIQUID]
-        StyleOption("live wallpaper", listOf("the picture", "liquid"), if (liquid) 1 else 0) { i -> style.update { it.with(Style.LIQUID, i == 1) } }
-        if (liquid) OptionHint("a pool in the theme's colors: tilt the phone, touch to stir · gravity, wobble and fps are in style.toml under [liquid]")
+    // Always offered: the liquid is drawn by our live wallpaper, so picking it also opens Android's picker when that isn't the wallpaper yet.
+    val liquid = style.style[Style.LIQUID]
+    StyleOption("live wallpaper", listOf("the picture", "liquid"), if (liquid) 1 else 0) { i ->
+        style.update { it.with(Style.LIQUID, i == 1) }
+        if (i == 1 && !store.liveWallpaperActive) runCatching { context.startActivity(store.liveWallpaperIntent()) }
+    }
+    if (liquid && !store.liveWallpaperActive) {
+        OptionHint("liquid shows once our live wallpaper is Android's: tap \"set wallpaper\" in Android's preview, or use the row above")
+    } else if (liquid) {
+        OptionHint("a pool in the theme's colors: tilt the phone, touch to stir · gravity, wobble and fps are in style.toml under [liquid]")
     }
 }
 
