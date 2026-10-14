@@ -121,6 +121,7 @@ class OmarchyWallpaperService : WallpaperService() {
                 LiquidSettings(
                     gravity = style[Style.LIQUID_GRAVITY].toFloat(),
                     wobble = style[Style.LIQUID_WOBBLE].toFloat(),
+                    shake = style[Style.LIQUID_SHAKE].toFloat(),
                     fps = style[Style.LIQUID_FPS].toInt(),
                 ),
                 LiquidPalette.from(colors),

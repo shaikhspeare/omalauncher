@@ -282,7 +282,12 @@ private fun BackgroundSection(
     if (liquid && !store.liveWallpaperActive) {
         OptionHint("liquid shows once our live wallpaper is Android's: tap \"set wallpaper\" in Android's preview, or use the row above")
     } else if (liquid) {
-        OptionHint("a pool in the theme's colors: tilt the phone, touch to stir · gravity, wobble and fps are in style.toml under [liquid]")
+        OptionHint("a pool in the theme's colors: tilt the phone, touch to stir")
+    }
+    if (liquid) {
+        NumberOption("gravity", listOf("calm" to 6.0, "normal" to 10.0, "lively" to 15.0), Style.LIQUID_GRAVITY, style)
+        NumberOption("idle sway", listOf("off" to 0.0, "low" to 0.3, "normal" to 0.6, "more" to 1.5), Style.LIQUID_WOBBLE, style)
+        NumberOption("shake", listOf("off" to 0.0, "low" to 0.15, "normal" to 0.25, "high" to 0.6), Style.LIQUID_SHAKE, style)
     }
 }
 

@@ -19,9 +19,11 @@ import kotlin.math.sin
 /** How the liquid behaves, from style.toml's `liquid.*`. */
 data class LiquidSettings(
     /** Gravity in m/s²; lower is calmer and slower. */
-    val gravity: Float = 12f,
+    val gravity: Float = 10f,
     /** How much the pool rocks by itself, 0 for none. */
-    val wobble: Float = 1f,
+    val wobble: Float = 0.6f,
+    /** How much shaking the phone slops it, 0 to ignore. */
+    val shake: Float = 0.25f,
     /** How often it's drawn; the physics always runs at 60 steps a second. */
     val fps: Int = 30,
 )
@@ -184,7 +186,7 @@ class LiquidDriver(
                 while (accumulator >= STEP_NS && steps < MAX_STEPS) {
                     val g = settings.gravity
                     val wobble = settings.wobble * (0.022f * sin(time * 0.45f) + 0.012f * sin(time * 1.1f + 1f))
-                    sim.step((tiltX + wobble) * g + shakeX * g * 0.4f + kick, tiltY * g + shakeY * g * 0.4f)
+                    sim.step((tiltX + wobble) * g + shakeX * g * settings.shake + kick, tiltY * g + shakeY * g * settings.shake)
                     kick *= 0.97f
                     time += LiquidSim.DT
                     accumulator -= STEP_NS
@@ -278,6 +280,6 @@ class LiquidDriver(
         const val MAX_CATCH_UP_NS = 100_000_000L
         const val FRAME_DELAY_MS = 8L
         const val GRAVITY_EARTH = 9.81f
-        const val TILT_SMOOTHING = 0.08f
+        const val TILT_SMOOTHING = 0.06f
     }
 }

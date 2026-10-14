@@ -140,8 +140,9 @@ class Style(
         val ANDROID_WALLPAPER = Setting.Flag("background.android", false, "true: home shows Android's own wallpaper instead of the theme's picture, live ones included; the theme's colors stay, and Linux apps keep the theme's background.")
 
         val LIQUID = Setting.Flag("background.liquid", false, "true: our live wallpaper is a pool of liquid in the theme's colors that sloshes as you tilt the phone and swirls under your finger, instead of the theme's picture. Needs our live wallpaper set as Android's (Style > background).")
-        val LIQUID_GRAVITY = Setting.Number("liquid.gravity", 12.0, 4.0..30.0, "How hard the liquid is pulled: lower is calmer and slower, higher sloshes more.")
-        val LIQUID_WOBBLE = Setting.Number("liquid.wobble", 1.0, 0.0..3.0, "How much the pool rocks by itself while you hold the phone still; 0 for none.")
+        val LIQUID_GRAVITY = Setting.Number("liquid.gravity", 10.0, 4.0..30.0, "How hard the liquid is pulled: lower is calmer and slower, higher sloshes more.")
+        val LIQUID_WOBBLE = Setting.Number("liquid.wobble", 0.6, 0.0..3.0, "How much the pool rocks by itself while you hold the phone still; 0 for none.")
+        val LIQUID_SHAKE = Setting.Number("liquid.shake", 0.25, 0.0..2.0, "How much shaking or jolting the phone slops the liquid; 0 ignores it.")
         val LIQUID_FPS = Setting.Number("liquid.fps", 30.0, 10.0..60.0, "How often the liquid is drawn; the physics always runs at 60 steps a second. Lower saves battery.")
 
         val APP_TILES = Setting.Flag("home.app-tiles", true, "Apps on home in a tile like a widget; false draws bare icons on the wallpaper.")
@@ -203,7 +204,7 @@ object StyleFile {
 
     val ALL: List<Setting<*>> =
         with(Style) {
-            listOf(THEME, BACKGROUND, ANDROID_WALLPAPER, LIQUID, LIQUID_GRAVITY, LIQUID_WOBBLE, LIQUID_FPS, APP_TILES, RECENT_APPS, GAPS_IN, GAPS_OUT, TILE_BORDER_WIDTH, TILE_BORDER, TILE_BORDER_FOCUSED) +
+            listOf(THEME, BACKGROUND, ANDROID_WALLPAPER, LIQUID, LIQUID_GRAVITY, LIQUID_WOBBLE, LIQUID_SHAKE, LIQUID_FPS, APP_TILES, RECENT_APPS, GAPS_IN, GAPS_OUT, TILE_BORDER_WIDTH, TILE_BORDER, TILE_BORDER_FOCUSED) +
                 listOf(SCREEN_GAPS_OUT, SCREEN_BORDER_WIDTH, MONOCHROME_ICONS, CORNER_SCALE) +
                 STATUS_BAR.all + NAVIGATION_BAR.all + listOf(TERMINAL_FONT, TERMINAL_TEXT)
         }
