@@ -122,6 +122,7 @@ class StyleStore(
         style = next
         table = StyleFile.encode(table, next)
         save()
+        if (changed.any(::isLiquid)) ThemeStore.changeListeners.forEach { it() }
     }
 
     /**
@@ -232,6 +233,9 @@ class StyleStore(
     }
 
     companion object {
+        /** Settings the liquid live wallpaper follows. */
+        fun isLiquid(key: String) = key == Style.LIQUID.key || key.startsWith("liquid.")
+
         const val FILE = "style.toml"
         const val DEFAULTS = "defaults.toml"
         const val ERRORS = "errors.txt"

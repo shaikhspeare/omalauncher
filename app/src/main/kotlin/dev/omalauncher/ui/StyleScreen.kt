@@ -273,6 +273,11 @@ private fun BackgroundSection(
             BasicText("[ use as android wallpaper + system colors ]", style = Mono.copy(color = Palette.accent))
         }
     }
+    if (store.liveWallpaperActive) {
+        val liquid = style.style[Style.LIQUID]
+        StyleOption("live wallpaper", listOf("the picture", "liquid"), if (liquid) 1 else 0) { i -> style.update { it.with(Style.LIQUID, i == 1) } }
+        if (liquid) OptionHint("a pool in the theme's colors: tilt the phone, touch to stir · gravity, wobble and fps are in style.toml under [liquid]")
+    }
 }
 
 /** The terminals' font and the size they open at, on top of Android's font size; see [TerminalFont]. */

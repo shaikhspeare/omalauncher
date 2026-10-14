@@ -150,6 +150,7 @@ class Runtime(
             val changed = new.changed(old)
             if (Style.THEME.key in changed || Style.BACKGROUND.key in changed) scope.launch { themes.followStyle() }
             if (Style.ANDROID_WALLPAPER.key in changed) scope.launch { themes.refreshLiveWallpaper() }
+            if (changed.any(StyleStore::isLiquid)) ThemeStore.changeListeners.forEach { it() }
         }
         // foot.ini follows the terminal settings, from the Style menu or the file alike.
         scope.launch {

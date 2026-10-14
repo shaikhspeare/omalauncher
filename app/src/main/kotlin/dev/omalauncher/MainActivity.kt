@@ -1,11 +1,13 @@
 package dev.omalauncher
 
 import android.app.ActivityManager
+import android.app.WallpaperManager
 import android.app.role.RoleManager
 import android.content.Intent
 import android.os.Bundle
 import android.util.Log
 import android.view.KeyEvent
+import android.view.MotionEvent
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.lifecycle.lifecycleScope
@@ -14,6 +16,9 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.snapshotFlow
+import dev.omalauncher.theme.OmarchyWallpaperService
+import dev.omalauncher.theme.Style
+import dev.omalauncher.ui.LauncherStyle
 import dev.omalauncher.ui.Palette
 import dev.omalauncher.ui.applySystemBars
 import dev.omalauncher.ui.LauncherRoot
@@ -42,6 +47,41 @@ class MainActivity : ComponentActivity() {
         lifecycleScope.launch {
             snapshotFlow { runtime.launcherReady }.first { it }
             withResumed { requestHomeRole() }
+        }
+    }
+
+    // Home sits over the wallpaper, so the liquid wallpaper only feels the finger if we pass it on.
+    private var lastWallpaperTouch = 0L
+
+    override fun dispatchTouchEvent(ev: MotionEvent): Boolean {
+        forwardToWallpaper(ev)
+        return super.dispatchTouchEvent(ev)
+    }
+
+    private fun forwardToWallpaper(ev: MotionEvent) {
+        if (!runtime.themes.liveWallpaperActive || !LauncherStyle.style[Style.LIQUID]) return
+        val phase =
+            when (ev.actionMasked) {
+                MotionEvent.ACTION_DOWN -> OmarchyWallpaperService.TOUCH_DOWN
+                MotionEvent.ACTION_MOVE -> OmarchyWallpaperService.TOUCH_MOVE
+                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> OmarchyWallpaperService.TOUCH_UP
+                else -> return
+            }
+        // A move every frame is plenty; each one is a call into another process.
+        if (phase == OmarchyWallpaperService.TOUCH_MOVE && ev.eventTime - lastWallpaperTouch < 12) return
+        lastWallpaperTouch = ev.eventTime
+        val view = window.decorView
+        val token = view.windowToken ?: return
+        val metrics = resources.displayMetrics
+        runCatching {
+            WallpaperManager.getInstance(this).sendWallpaperCommand(
+                token,
+                OmarchyWallpaperService.TOUCH_COMMAND,
+                (ev.rawX / metrics.widthPixels * 1000).toInt(),
+                (ev.rawY / metrics.heightPixels * 1000).toInt(),
+                phase,
+                null,
+            )
         }
     }
 

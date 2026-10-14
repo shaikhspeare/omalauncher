@@ -20,6 +20,7 @@ android {
         versionCode = 13
         versionName = "0.7.1"
         ndk { abiFilters += "arm64-v8a" }
+        manifestPlaceholders["appLabel"] = "Omalauncher"
     }
 
     buildFeatures { buildConfig = true }
@@ -51,6 +52,11 @@ android {
     }
 
     buildTypes {
+        debug {
+            // Installs beside the release app instead of replacing it: same signature or not.
+            applicationIdSuffix = ".liquid"
+            manifestPlaceholders["appLabel"] = "Omalauncher Liquid"
+        }
         release {
             // Shrinks the APK and drops what the app doesn't use, like the owl module's unused parts.
             isMinifyEnabled = true

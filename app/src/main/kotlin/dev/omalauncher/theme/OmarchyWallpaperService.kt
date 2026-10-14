@@ -7,9 +7,13 @@ import android.graphics.Paint
 import android.graphics.Rect
 import android.os.Build
 import android.os.Handler
+import android.os.Bundle
 import android.os.Looper
 import android.service.wallpaper.WallpaperService
 import android.view.SurfaceHolder
+import dev.omalauncher.theme.liquid.LiquidDriver
+import dev.omalauncher.theme.liquid.LiquidPalette
+import dev.omalauncher.theme.liquid.LiquidSettings
 import dev.omalauncher.ui.decodeForScreen
 import dev.omalauncher.ui.wallpaperCrop
 import java.util.concurrent.Executors
@@ -29,6 +33,9 @@ class OmarchyWallpaperService : WallpaperService() {
         private val decoder = Executors.newSingleThreadExecutor()
         private val paint = Paint(Paint.FILTER_BITMAP_FLAG)
 
+        /** The pool of liquid, while style.toml's background.liquid asks for it instead of the picture. */
+        private var liquid: LiquidDriver? = null
+
         private var colors: Map<String, String> = emptyMap()
         private var bitmap: Bitmap? = null
         private var loadedPath: String? = null
@@ -47,6 +54,8 @@ class OmarchyWallpaperService : WallpaperService() {
 
         override fun onDestroy() {
             ThemeStore.changeListeners.remove(onThemeChanged)
+            liquid?.destroy()
+            liquid = null
             decoder.shutdownNow()
             super.onDestroy()
         }
@@ -58,6 +67,7 @@ class OmarchyWallpaperService : WallpaperService() {
             height: Int,
         ) {
             super.onSurfaceChanged(holder, format, width, height)
+            liquid?.resize(width, height)
             draw()
         }
 
@@ -70,12 +80,51 @@ class OmarchyWallpaperService : WallpaperService() {
             yPixelOffset: Int,
         ) {
             if (xOffset == this.xOffset) return
+            liquid?.swipe(xOffset - this.xOffset)
             this.xOffset = xOffset
             if (isVisible) draw()
         }
 
         override fun onVisibilityChanged(visible: Boolean) {
+            liquid?.setVisible(visible)
             if (visible) draw()
+        }
+
+        /** The launcher forwards its touches: a finger down, moving or up, as thousandths of the screen. */
+        override fun onCommand(
+            action: String?,
+            x: Int,
+            y: Int,
+            z: Int,
+            extras: Bundle?,
+            resultRequested: Boolean,
+        ): Bundle? {
+            if (action == TOUCH_COMMAND) liquid?.touch(on = z != TOUCH_UP, fx = x / 1000f, fy = y / 1000f)
+            return super.onCommand(action, x, y, z, extras, resultRequested)
+        }
+
+        /** Starts or stops the liquid as the style asks, and gives it the theme's colors. */
+        private fun applyLiquid() {
+            val style = StyleStore.read(this@OmarchyWallpaperService)
+            if (!style[Style.LIQUID]) {
+                liquid?.destroy()
+                liquid = null
+                return
+            }
+            val driver =
+                liquid ?: LiquidDriver(this@OmarchyWallpaperService) { surfaceHolder }.also {
+                    liquid = it
+                    it.resize(surfaceHolder.surfaceFrame.width(), surfaceHolder.surfaceFrame.height())
+                    it.setVisible(isVisible)
+                }
+            driver.configure(
+                LiquidSettings(
+                    gravity = style[Style.LIQUID_GRAVITY].toFloat(),
+                    wobble = style[Style.LIQUID_WOBBLE].toFloat(),
+                    fps = style[Style.LIQUID_FPS].toInt(),
+                ),
+                LiquidPalette.from(colors),
+            )
         }
 
         /** Reads the saved theme off the main thread, then redraws with it. */
@@ -93,6 +142,7 @@ class OmarchyWallpaperService : WallpaperService() {
                         bitmap?.recycle()
                         bitmap = decoded
                     }
+                    applyLiquid()
                     draw()
                     if (colorsChanged) notifyColorsChanged()
                 }
@@ -100,6 +150,8 @@ class OmarchyWallpaperService : WallpaperService() {
         }
 
         private fun draw() {
+            // The liquid draws itself; the picture is only for when it's off.
+            if (liquid != null) return
             val holder = surfaceHolder
             val canvas = runCatching { holder.lockHardwareCanvas() }.getOrNull() ?: return
             try {
@@ -129,5 +181,13 @@ class OmarchyWallpaperService : WallpaperService() {
                 if (colors["mode"] == "light") WallpaperColors.HINT_SUPPORTS_DARK_TEXT else WallpaperColors.HINT_SUPPORTS_DARK_THEME
             return WallpaperColors(primary, secondary, tertiary, hints)
         }
+    }
+
+    companion object {
+        /** The command the launcher sends its touches with (WallpaperManager.sendWallpaperCommand): z is [TOUCH_DOWN], [TOUCH_MOVE] or [TOUCH_UP]. */
+        const val TOUCH_COMMAND = "dev.omalauncher.liquid.touch"
+        const val TOUCH_DOWN = 0
+        const val TOUCH_MOVE = 1
+        const val TOUCH_UP = 2
     }
 }
